@@ -1,5 +1,7 @@
 import json
 from matplotlib import pyplot as plt
+import numpy as np
+import seaborn as sns
 
 def get_videos():
     return json.loads(open("data/videos.json", "r").readline())
@@ -46,10 +48,55 @@ def get_sample_sizes(videos, video_sentiments, comments, comment_sentiments, vis
         if save_file:
             plt.savefig("images/sample_sizes.png")
 
+def analyze_video_sentiments(videos, video_sentiments):
+    dates = []
+    toxicity = []
+    severe_toxicity = []
+    identity_attack = []
+    insult = []
+    profanity = []
+    threat = []
+
+    for video in videos:
+        video_values = video[list(video.keys())[0]]
+        video_id = video_values['video_id']
+        if video_id not in video_sentiments:
+            continue
+        date = int(video_values['date_published'][:video_values['date_published'].index('T')].replace('-', ''))
+        dates.append(date)
+        sentiment_values = video_sentiments[video_id]
+        toxicity.append(sentiment_values['toxicity'])
+        severe_toxicity.append(sentiment_values['severe_toxicity'])
+        identity_attack.append(sentiment_values['identity_attack'])
+        insult.append(sentiment_values['insult'])
+        profanity.append(sentiment_values['profanity'])
+        threat.append(sentiment_values['threat'])
+
+    plt.figure(figsize=(15, 7))
+    plt.gca().axes.get_xaxis().set_ticks([])
+    plt.xlabel("9 March 2020 - 9 March 2023")
+
+
+    ys = [toxicity, severe_toxicity, identity_attack, insult, profanity, threat]
+    palette = sns.color_palette(None, len(ys))
+    labels = ['Toxicity', 'Severe Toxicity', 'Identity Attack', 'Insult', 'Profanity', 'Threat']
+    for i in range(len(ys)):
+        color = palette[i]
+        plt.scatter(dates, ys[i], color=color, label=labels[i], edgecolors=None)
+        z = np.polyfit(dates, ys[i], 1)
+        p = np.poly1d(z)
+        plt.plot(dates, p(dates), color=color)
+    plt.plot([20220309, 20220309], [0, 1], color='black')
+    plt.legend()
+    plt.grid(True)
+    plt.title("Trends in Average Negative Sentiments (n=" + str(len(toxicity)) + ")")
+    plt.show()
+
 def main():
     videos = get_videos()
     video_sentiments = get_video_sentiments()
     comments = get_comments()
     comment_sentiments = get_comment_sentiments()
-    get_sample_sizes(videos, video_sentiments, comments, comment_sentiments, visualize=False, save_file=True)
+    #get_sample_sizes(videos, video_sentiments, comments, comment_sentiments, visualize=False, save_file=True)
+    analyze_video_sentiments(videos, video_sentiments)
 main()
