@@ -1,5 +1,6 @@
 import json
 from matplotlib import pyplot as plt
+from matplotlib.dates import date2num
 import numpy as np
 import seaborn as sns
 
@@ -62,7 +63,7 @@ def analyze_video_sentiments(videos, video_sentiments):
         video_id = video_values['video_id']
         if video_id not in video_sentiments:
             continue
-        date = int(video_values['date_published'][:video_values['date_published'].index('T')].replace('-', ''))
+        date = date2num(np.datetime64(video_values['date_published'][:video_values['date_published'].index('T')]))
         dates.append(date)
         sentiment_values = video_sentiments[video_id]
         toxicity.append(sentiment_values['toxicity'])
@@ -74,6 +75,7 @@ def analyze_video_sentiments(videos, video_sentiments):
 
     plt.figure(figsize=(15, 7))
     plt.gca().axes.get_xaxis().set_ticks([])
+    plt.gca().set_ylim([0, 0.6])
     plt.xlabel("9 March 2020 - 9 March 2023")
 
 
@@ -82,15 +84,91 @@ def analyze_video_sentiments(videos, video_sentiments):
     labels = ['Toxicity', 'Severe Toxicity', 'Identity Attack', 'Insult', 'Profanity', 'Threat']
     for i in range(len(ys)):
         color = palette[i]
-        plt.scatter(dates, ys[i], color=color, label=labels[i], edgecolors=None)
+        plt.scatter(dates, ys[i], color=color, edgecolors=None, s=8, alpha=0.3)
         z = np.polyfit(dates, ys[i], 1)
         p = np.poly1d(z)
-        plt.plot(dates, p(dates), color=color)
-    plt.plot([20220309, 20220309], [0, 1], color='black')
+        plt.plot(dates, p(dates), color=color, label=labels[i], linewidth=3)
+    date = date2num(np.datetime64('2022-03-09'))
+    plt.plot([date, date], [0, 1], color='black', linestyle='--')
     plt.legend()
     plt.grid(True)
-    plt.title("Trends in Average Negative Sentiments (n=" + str(len(toxicity)) + ")")
+    plt.title("Trends in Average Negative Sentiments in YouTube Video Titles (n=" + str(len(toxicity)) + ")")
     plt.show()
+
+def analyze_video_views(videos):
+    dates = []
+    views = []
+
+    for video in videos:
+        video_values = video[list(video.keys())[0]]
+        if 'views' not in video_values:
+            continue
+        view_count = int(video_values['views'])
+        views.append(view_count)
+        date = date2num(np.datetime64(video_values['date_published'][:video_values['date_published'].index('T')]))
+        dates.append(date)
+
+    plt.figure(figsize=(15, 7))
+    plt.gca().axes.get_xaxis().set_ticks([])
+    plt.gca().axes.set_yscale('log')
+    plt.gca().set_ylim([0, 1e8])
+    plt.xlabel("9 March 2020 - 9 March 2023")
+    plt.ylabel("Views")
+
+    plt.bar(dates, views)
+    z = np.polyfit(dates, views, 1)
+    p = np.poly1d(z)
+    plt.plot(dates, p(dates), linewidth=3, color='purple')
+    date = date2num(np.datetime64('2022-03-09'))
+    plt.plot([date, date], [0, 1e8], color='black', linewidth=2, linestyle='--')
+    plt.title("Log-scale Trends in Average YouTube Video View Count (n=" + str(len(views)) + ")")
+    plt.show()
+
+def analyze_comment_sentiments(videos, comment_sentiments):
+    dates = []
+    toxicity = []
+    severe_toxicity = []
+    identity_attack = []
+    insult = []
+    profanity = []
+    threat = []
+
+    for video_id in comment_sentiments:
+        sentiment_values = comment_sentiments[video_id]
+        if len(sentiment_values['toxicity']) < 5:
+            continue
+        raw_date = list(filter(lambda x : list(x.values())[0]['video_id'] == video_id, videos))[0]
+        date = date2num(np.datetime64(list(raw_date.values())[0]['date_published'][:list(raw_date.values())[0]['date_published'].index('T')]))
+        dates.append(date)
+        toxicity.append(sum(sentiment_values['toxicity'])/len(sentiment_values['toxicity']))
+        severe_toxicity.append(sum(sentiment_values['severe_toxicity'])/len(sentiment_values['severe_toxicity']))
+        identity_attack.append(sum(sentiment_values['identity_attack'])/len(sentiment_values['identity_attack']))
+        insult.append(sum(sentiment_values['insult'])/len(sentiment_values['insult']))
+        profanity.append(sum(sentiment_values['profanity'])/len(sentiment_values['profanity']))
+        threat.append(sum(sentiment_values['threat'])/len(sentiment_values['threat']))
+
+    plt.figure(figsize=(15, 7))
+    plt.gca().axes.get_xaxis().set_ticks([])
+    plt.gca().set_ylim([0, 0.6])
+    plt.xlabel("9 March 2020 - 9 March 2023")
+
+
+    ys = [toxicity, severe_toxicity, identity_attack, insult, profanity, threat]
+    palette = sns.color_palette(None, len(ys))
+    labels = ['Toxicity', 'Severe Toxicity', 'Identity Attack', 'Insult', 'Profanity', 'Threat']
+    for i in range(len(ys)):
+        color = palette[i]
+        plt.scatter(dates, ys[i], color=color, edgecolors=None, s=8, alpha=0.3)
+        z = np.polyfit(dates, ys[i], 1)
+        p = np.poly1d(z)
+        plt.plot(dates, p(dates), color=color, label=labels[i], linewidth=3, linestyle='--')
+    date = date2num(np.datetime64('2022-03-09'))
+    plt.plot([date, date], [0, 1], color='black')
+    plt.legend()
+    plt.grid(True)
+    plt.title("Trends in Average Negative Sentiments in YouTube Video Comments (n=" + str(len(toxicity)) + ")")
+    plt.show()
+
 
 def main():
     videos = get_videos()
@@ -98,5 +176,7 @@ def main():
     comments = get_comments()
     comment_sentiments = get_comment_sentiments()
     #get_sample_sizes(videos, video_sentiments, comments, comment_sentiments, visualize=False, save_file=True)
-    analyze_video_sentiments(videos, video_sentiments)
+    #analyze_video_sentiments(videos, video_sentiments)
+    #analyze_comment_sentiments(videos, comment_sentiments)
+    analyze_video_views(videos)
 main()
