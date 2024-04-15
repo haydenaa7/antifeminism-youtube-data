@@ -4,8 +4,18 @@ from matplotlib.dates import date2num
 import numpy as np
 import seaborn as sns
 
+BEFORE_ELECTION_NUM, AFTER_ELECTION_NUM = None, None
+
 def get_videos():
     return json.loads(open("data/videos.json", "r").readline())
+
+def partition_videos(videos):
+    def get_date(video):
+        raw = list(video.values())[0]['date_published']
+        return raw[:raw.index('T')]
+    before_election = list(filter(lambda x : get_date(x) <= '2022-03-09', videos))
+    after_election = list(filter(lambda x : get_date(x) > '2022-03-09', videos))
+    return before_election, after_election
 
 def get_video_sentiments():
     video_sentiments = {}
@@ -85,7 +95,8 @@ def analyze_video_sentiments(videos, video_sentiments):
     for i in range(len(ys)):
         color = palette[i]
         plt.scatter(dates, ys[i], color=color, edgecolors=None, s=8, alpha=0.3)
-        z = np.polyfit(dates, ys[i], 1)
+        # Polynomial regression
+        z = np.polyfit(dates, ys[i], 3)
         p = np.poly1d(z)
         plt.plot(dates, p(dates), color=color, label=labels[i], linewidth=3)
     date = date2num(np.datetime64('2022-03-09'))
@@ -114,11 +125,13 @@ def analyze_video_views(videos):
     plt.gca().set_ylim([0, 1e8])
     plt.xlabel("9 March 2020 - 9 March 2023")
     plt.ylabel("Views")
-
     plt.bar(dates, views)
-    z = np.polyfit(dates, views, 1)
+
+    # Polynomial regression
+    z = np.polyfit(dates, views, 3)
     p = np.poly1d(z)
-    plt.plot(dates, p(dates), linewidth=3, color='purple')
+    plt.plot(dates, p(dates), linewidth=2, color='orange')
+
     date = date2num(np.datetime64('2022-03-09'))
     plt.plot([date, date], [0, 1e8], color='black', linewidth=2, linestyle='--')
     plt.title("Log-scale Trends in Average YouTube Video View Count (n=" + str(len(views)) + ")")
@@ -172,11 +185,13 @@ def analyze_comment_sentiments(videos, comment_sentiments):
 
 def main():
     videos = get_videos()
+    before, after = partition_videos(videos)
+    BEFORE_ELECTION_NUM, AFTER_ELECTION_NUM = len(before), len(after)
     video_sentiments = get_video_sentiments()
     comments = get_comments()
     comment_sentiments = get_comment_sentiments()
     #get_sample_sizes(videos, video_sentiments, comments, comment_sentiments, visualize=False, save_file=True)
-    #analyze_video_sentiments(videos, video_sentiments)
+    analyze_video_sentiments(videos, video_sentiments)
     #analyze_comment_sentiments(videos, comment_sentiments)
-    analyze_video_views(videos)
+    #analyze_video_views(videos)
 main()
