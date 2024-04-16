@@ -88,7 +88,6 @@ def analyze_video_sentiments(videos, video_sentiments):
     plt.gca().set_ylim([0, 0.6])
     plt.xlabel("9 March 2020 - 9 March 2023")
 
-
     ys = [toxicity, severe_toxicity, identity_attack, insult, profanity, threat]
     palette = sns.color_palette(None, len(ys))
     labels = ['Toxicity', 'Severe Toxicity', 'Identity Attack', 'Insult', 'Profanity', 'Threat']
@@ -99,6 +98,7 @@ def analyze_video_sentiments(videos, video_sentiments):
         z = np.polyfit(dates, ys[i], 3)
         p = np.poly1d(z)
         plt.plot(dates, p(dates), color=color, label=labels[i], linewidth=3)
+
     date = date2num(np.datetime64('2022-03-09'))
     plt.plot([date, date], [0, 1], color='black', linestyle='--')
     plt.legend()
@@ -137,7 +137,39 @@ def analyze_video_views(videos):
     plt.title("Log-scale Trends in Average YouTube Video View Count (n=" + str(len(views)) + ")")
     plt.show()
 
+def analyze_video_comments(videos):
+    dates = []
+    comments = []
+
+    for video in videos:
+        video_values = video[list(video.keys())[0]]
+        if 'comments' not in video_values:
+            continue
+        comment_count = int(video_values['comments'])
+        comments.append(comment_count)
+        date = date2num(np.datetime64(video_values['date_published'][:video_values['date_published'].index('T')]))
+        dates.append(date)
+
+    plt.figure(figsize=(15, 7))
+    plt.gca().axes.get_xaxis().set_ticks([])
+    plt.gca().axes.set_yscale('log')
+    plt.gca().set_ylim([0, 1e5])
+    plt.xlabel("9 March 2020 - 9 March 2023")
+    plt.ylabel("Views")
+    plt.bar(dates, comments)
+
+    # Polynomial regression
+    z = np.polyfit(dates, comments, 3)
+    p = np.poly1d(z)
+    plt.plot(dates, p(dates), linewidth=2, color='orange')
+
+    date = date2num(np.datetime64('2022-03-09'))
+    plt.plot([date, date], [0, 1e5], color='black', linewidth=2, linestyle='--')
+    plt.title("Log-scale Trends in Average YouTube Video Comment Count (n=" + str(len(comments)) + ")")
+    plt.show()
+
 def analyze_comment_sentiments(videos, comment_sentiments):
+    size = 0
     dates = []
     toxicity = []
     severe_toxicity = []
@@ -153,12 +185,21 @@ def analyze_comment_sentiments(videos, comment_sentiments):
         raw_date = list(filter(lambda x : list(x.values())[0]['video_id'] == video_id, videos))[0]
         date = date2num(np.datetime64(list(raw_date.values())[0]['date_published'][:list(raw_date.values())[0]['date_published'].index('T')]))
         dates.append(date)
-        toxicity.append(sum(sentiment_values['toxicity'])/len(sentiment_values['toxicity']))
-        severe_toxicity.append(sum(sentiment_values['severe_toxicity'])/len(sentiment_values['severe_toxicity']))
-        identity_attack.append(sum(sentiment_values['identity_attack'])/len(sentiment_values['identity_attack']))
-        insult.append(sum(sentiment_values['insult'])/len(sentiment_values['insult']))
-        profanity.append(sum(sentiment_values['profanity'])/len(sentiment_values['profanity']))
-        threat.append(sum(sentiment_values['threat'])/len(sentiment_values['threat']))
+        
+        t = set(sentiment_values['toxicity'])
+        toxicity.append(sum(t)/len(t))
+        st = set(sentiment_values['severe_toxicity'])
+        severe_toxicity.append(sum(st)/len(st))
+        ia = set(sentiment_values['identity_attack'])
+        identity_attack.append(sum(ia)/len(ia))
+        i = set(sentiment_values['insult'])
+        insult.append(sum(i)/len(i))
+        p = set(sentiment_values['profanity'])
+        profanity.append(sum(p)/len(p))
+        th = set(sentiment_values['threat'])
+        threat.append(sum(th)/len(th))
+
+        size += len(t)
 
     plt.figure(figsize=(15, 7))
     plt.gca().axes.get_xaxis().set_ticks([])
@@ -172,14 +213,14 @@ def analyze_comment_sentiments(videos, comment_sentiments):
     for i in range(len(ys)):
         color = palette[i]
         plt.scatter(dates, ys[i], color=color, edgecolors=None, s=8, alpha=0.3)
-        z = np.polyfit(dates, ys[i], 1)
+        z = np.polyfit(dates, ys[i], 3)
         p = np.poly1d(z)
-        plt.plot(dates, p(dates), color=color, label=labels[i], linewidth=3, linestyle='--')
+        plt.plot(dates, p(dates), color=color, label=labels[i], linewidth=2)
     date = date2num(np.datetime64('2022-03-09'))
-    plt.plot([date, date], [0, 1], color='black')
+    plt.plot([date, date], [0, 1], color='black', linestyle='--', linewidth=2)
     plt.legend()
     plt.grid(True)
-    plt.title("Trends in Average Negative Sentiments in YouTube Video Comments (n=" + str(len(toxicity)) + ")")
+    plt.title("Trends in Average Negative Sentiments in YouTube Video Comments (n=" + str(size) + ")")
     plt.show()
 
 
@@ -190,8 +231,9 @@ def main():
     video_sentiments = get_video_sentiments()
     comments = get_comments()
     comment_sentiments = get_comment_sentiments()
-    #get_sample_sizes(videos, video_sentiments, comments, comment_sentiments, visualize=False, save_file=True)
-    analyze_video_sentiments(videos, video_sentiments)
+    #get_sample_sizes(videos, video_sentiments, comments, comment_sentiments, visualize=True, save_file=False)
+    #analyze_video_sentiments(videos, video_sentiments)
     #analyze_comment_sentiments(videos, comment_sentiments)
     #analyze_video_views(videos)
+    analyze_video_comments(videos)
 main()

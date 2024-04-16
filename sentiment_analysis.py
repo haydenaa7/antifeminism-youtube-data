@@ -24,6 +24,8 @@ def analyze_comments(comments, perspectives):
                         response = api.comments().analyze(body=request).execute()
                     except:
                         continue
+                    if response['attributeScores']['TOXICITY']['spanScores'][0]['score']['value'] in output[video_id]['toxicity']:
+                        continue
                     output[video_id]['toxicity'].append(response['attributeScores']['TOXICITY']['spanScores'][0]['score']['value'])
                     output[video_id]['severe_toxicity'].append(response['attributeScores']['SEVERE_TOXICITY']['spanScores'][0]['score']['value'])
                     output[video_id]['identity_attack'].append(response['attributeScores']['IDENTITY_ATTACK']['spanScores'][0]['score']['value'])
