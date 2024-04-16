@@ -106,68 +106,6 @@ def analyze_video_sentiments(videos, video_sentiments):
     plt.title("Trends in Average Negative Sentiments in YouTube Video Titles (n=" + str(len(toxicity)) + ")")
     plt.show()
 
-def analyze_video_views(videos):
-    dates = []
-    views = []
-
-    for video in videos:
-        video_values = video[list(video.keys())[0]]
-        if 'views' not in video_values:
-            continue
-        view_count = int(video_values['views'])
-        views.append(view_count)
-        date = date2num(np.datetime64(video_values['date_published'][:video_values['date_published'].index('T')]))
-        dates.append(date)
-
-    plt.figure(figsize=(15, 7))
-    plt.gca().axes.get_xaxis().set_ticks([])
-    plt.gca().axes.set_yscale('log')
-    plt.gca().set_ylim([0, 1e8])
-    plt.xlabel("9 March 2020 - 9 March 2023")
-    plt.ylabel("Views")
-    plt.bar(dates, views)
-
-    # Polynomial regression
-    z = np.polyfit(dates, views, 3)
-    p = np.poly1d(z)
-    plt.plot(dates, p(dates), linewidth=2, color='orange')
-
-    date = date2num(np.datetime64('2022-03-09'))
-    plt.plot([date, date], [0, 1e8], color='black', linewidth=2, linestyle='--')
-    plt.title("Log-scale Trends in Average YouTube Video View Count (n=" + str(len(views)) + ")")
-    plt.show()
-
-def analyze_video_comments(videos):
-    dates = []
-    comments = []
-
-    for video in videos:
-        video_values = video[list(video.keys())[0]]
-        if 'comments' not in video_values:
-            continue
-        comment_count = int(video_values['comments'])
-        comments.append(comment_count)
-        date = date2num(np.datetime64(video_values['date_published'][:video_values['date_published'].index('T')]))
-        dates.append(date)
-
-    plt.figure(figsize=(15, 7))
-    plt.gca().axes.get_xaxis().set_ticks([])
-    plt.gca().axes.set_yscale('log')
-    plt.gca().set_ylim([0, 1e5])
-    plt.xlabel("9 March 2020 - 9 March 2023")
-    plt.ylabel("Views")
-    plt.bar(dates, comments)
-
-    # Polynomial regression
-    z = np.polyfit(dates, comments, 3)
-    p = np.poly1d(z)
-    plt.plot(dates, p(dates), linewidth=2, color='orange')
-
-    date = date2num(np.datetime64('2022-03-09'))
-    plt.plot([date, date], [0, 1e5], color='black', linewidth=2, linestyle='--')
-    plt.title("Log-scale Trends in Average YouTube Video Comment Count (n=" + str(len(comments)) + ")")
-    plt.show()
-
 def analyze_comment_sentiments(videos, comment_sentiments):
     size = 0
     dates = []
@@ -223,6 +161,101 @@ def analyze_comment_sentiments(videos, comment_sentiments):
     plt.title("Trends in Average Negative Sentiments in YouTube Video Comments (n=" + str(size) + ")")
     plt.show()
 
+def analyze_video_views(videos):
+    dates = []
+    views = []
+
+    for video in videos:
+        video_values = video[list(video.keys())[0]]
+        if 'views' not in video_values:
+            continue
+        view_count = int(video_values['views'])
+        views.append(view_count)
+        date = date2num(np.datetime64(video_values['date_published'][:video_values['date_published'].index('T')]))
+        dates.append(date)
+
+    plt.figure(figsize=(15, 7))
+    plt.gca().axes.get_xaxis().set_ticks([])
+    plt.gca().axes.set_yscale('log')
+    plt.gca().set_ylim([0, 1e8])
+    plt.xlabel("9 March 2020 - 9 March 2023")
+    plt.ylabel("Views")
+    plt.bar(dates, views)
+
+    # Polynomial regression
+    z = np.polyfit(dates, views, 3)
+    p = np.poly1d(z)
+    plt.plot(dates, p(dates), linewidth=2, color='orange')
+
+    date = date2num(np.datetime64('2022-03-09'))
+    plt.plot([date, date], [0, 1e8], color='black', linewidth=2, linestyle='--')
+    plt.title("Log-scale Trends in Average YouTube Video View Count (n=" + str(len(views)) + ")")
+    plt.show()
+
+def analyze_video_comments(videos):
+    dates = []
+    comments = []
+
+    for video in videos:
+        video_values = video[list(video.keys())[0]]
+        if 'comments' not in video_values:
+            continue
+        comment_count = int(video_values['comments'])
+        comments.append(comment_count)
+        date = date2num(np.datetime64(video_values['date_published'][:video_values['date_published'].index('T')]))
+        dates.append(date)
+
+    plt.figure(figsize=(15, 7))
+    plt.gca().axes.get_xaxis().set_ticks([])
+    plt.gca().axes.set_yscale('log')
+    plt.gca().set_ylim([0, 1e5])
+    plt.xlabel("9 March 2020 - 9 March 2023")
+    plt.ylabel("Comments")
+    plt.bar(dates, comments)
+
+    # Polynomial regression
+    z = np.polyfit(dates, comments, 3)
+    p = np.poly1d(z)
+    plt.plot(dates, p(dates), linewidth=2, color='orange')
+
+    date = date2num(np.datetime64('2022-03-09'))
+    plt.plot([date, date], [0, 1e5], color='black', linewidth=2, linestyle='--')
+    plt.title("Log-scale Trends in Average YouTube Video Comment Count (n=" + str(len(comments)) + ")")
+    plt.show()
+
+def analyze_video_likes(videos):
+    dates = []
+    likes = []
+
+    for video in videos:
+        video_values = video[list(video.keys())[0]]
+        if 'likes' not in video_values:
+            continue
+        comment_count = int(video_values['likes'])
+        likes.append(comment_count)
+        date = date2num(np.datetime64(video_values['date_published'][:video_values['date_published'].index('T')]))
+        dates.append(date)
+
+    plt.figure(figsize=(15, 7))
+    plt.gca().axes.get_xaxis().set_ticks([])
+    plt.gca().axes.set_yscale('log')
+    plt.gca().set_ylim([0, 1e5])
+    plt.xlabel("9 March 2020 - 9 March 2023")
+    plt.ylabel("Likes")
+    plt.bar(dates, likes)
+
+    # Polynomial regression
+    z = np.polyfit(dates, likes, 3)
+    p = np.poly1d(z)
+    plt.plot(dates, p(dates), linewidth=2, color='orange')
+
+    date = date2num(np.datetime64('2022-03-09'))
+    plt.plot([date, date], [0, 1e5], color='black', linewidth=2, linestyle='--')
+    plt.title("Log-scale Trends in Average YouTube Video Like Count (n=" + str(len(likes)) + ")")
+    plt.show()
+
+
+
 
 def main():
     videos = get_videos()
@@ -233,7 +266,8 @@ def main():
     comment_sentiments = get_comment_sentiments()
     #get_sample_sizes(videos, video_sentiments, comments, comment_sentiments, visualize=True, save_file=False)
     #analyze_video_sentiments(videos, video_sentiments)
-    #analyze_comment_sentiments(videos, comment_sentiments)
+    analyze_comment_sentiments(videos, comment_sentiments)
     #analyze_video_views(videos)
-    analyze_video_comments(videos)
+    #analyze_video_comments(videos)
+    #analyze_video_likes(videos)
 main()
