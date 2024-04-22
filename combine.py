@@ -5,7 +5,7 @@ import numpy as np
 import googleapiclient.discovery
 
 queries = ['페미', '안티페미', '여성주의', '반여성주의', '페미니즘', '안티페미니즘']
-transliterated = {'페미' : 'Femi', '안티페미' : 'Anti-femi', '여성주의' : 'Yeo-seong-ju-ui', '반여성주의' : 'Ban-yeo-seong-ju-ui', '페미니즘' : 'Feminism', '안티페미니즘' : 'Anti-feminism'}
+transliterated = {'페미' : 'Pheymi', '안티페미' : 'Anthipheymi', '여성주의' : 'Yesengcwuuy', '반여성주의' : 'Panyesengcwuuy', '페미니즘' : 'Pheyminicum', '안티페미니즘' : 'Anthipheyminicum'}
 
 def parse_data():
     data = {'페미' : [], '안티페미' : [], '여성주의' : [], '반여성주의' : [], '페미니즘' : [], '안티페미니즘' : []}
@@ -31,11 +31,12 @@ def combine_data(data):
 
 def plot_query_sizes(data):
     plt.figure(figsize=(12, 6))
-    plt.title("Sizes of Query Results")
-    plt.xlabel("Queries")
-    plt.ylabel("Number of Results")
-    plt.bar(np.array(list(transliterated.values())), np.array([len(data[val]) for val in data]))
-    plt.show()
+    plt.title("Sample Sizes of Query Results")
+    plt.ylabel("Number")
+    plt.bar(np.array(list(transliterated.values())), np.array([len(data[val]) for val in data]), color='orange')
+    
+    #plt.show()
+    #plt.savefig('images/queries.png')
 
 def add_statistics(data):
     video_ids = [val[list(val.keys())[0]]['video_id'] for val in data]
@@ -67,12 +68,11 @@ def add_statistics(data):
 
 def main():
     data_by_query = parse_data()
-    #plot_query_sizes(data_by_query)
-    combined_data = combine_data(data_by_query)
+    plot_query_sizes(data_by_query)
+    #combined_data = combine_data(data_by_query)
     #add_statistics(combined_data)
     # with open('videos.json', 'w') as f:
     #     f.write(json.dumps(combined_data, ensure_ascii=False))
-    print(len(combined_data))
 
 main()
 

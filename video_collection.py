@@ -14,11 +14,12 @@ youtube = googleapiclient.discovery.build(
 queries = ['페미', '안티페미', '여성주의', '반여성주의', '페미니즘', '안티페미니즘']
 page_tokens = {query : None for query in queries}
 for i in range(NUM_ITERATIONS):
+        print("Processing iteration " + str(i) + " of " + str(NUM_ITERATIONS))
         query_num = 1
         for query in queries:
-                with open(FILE_DIRECTORY + "/query" + str(query_num) + ".json", "a") as f:
+                with open("raw_data_test.json", "a") as f:
                         start_date = datetime.strptime("03/09/20 00:00:00", "%m/%d/%y %H:%M:%S")
-                        end_date = datetime.strptime("03/09/23 00:00:00", "%m/%d/%y %H:%M:%S")
+                        end_date = datetime.strptime("03/09/24 00:00:00", "%m/%d/%y %H:%M:%S")
                         if not page_tokens[query] and i > 0:
                                 continue
                         if not page_tokens[query]:
@@ -55,6 +56,7 @@ for i in range(NUM_ITERATIONS):
                                 page_tokens[query] = None
                         for val in response['items']:
                                 f.write(json.dumps({val['snippet']['title'] : {"video_id" : val['id']['videoId'], "channel_id" : val['snippet']['channelId'], \
-                                                        "channel_title" : val['snippet']['channelTitle'], "date_published" : val['snippet']['publishedAt'], \
-                                                                "description" : val['snippet']['description']}}, ensure_ascii=False) + "\n")
+                                                        "channel_title" : val['snippet']['channelTitle'], "date_published" : val['snippet']['publishedAt'].split("T")[0], \
+                                                                "description" : val['snippet']['description'], "query" : query}}, ensure_ascii=False) + "\n")
                         query_num += 1
+        print("Successfully processed iteration")

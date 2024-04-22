@@ -6,38 +6,38 @@ API_KEYS = ['AIzaSyBVZgLhciLiceJzE1mRIynS0Y_TpF-fZHo', 'AIzaSyATYZXMLy5gE6-VedIA
             'AIzaSyBCB08Ov42yWxaY9O_wu_idSLPZIE9PB3E', 'AIzaSyCyM8jTZfF-rMEwD72KWz8IRuR7s5bLiKw']
 
 def analyze_comments(comments, perspectives):
+    # Save and retrieve current comment to start at if function being run multiple times
     original_pos = int(open('data/comment_loc.txt', 'r').readline())
-    i = original_pos
     with open('data/comment_sentiments.json', 'a') as f:
         for j in range(original_pos, len(comments)):
             video_id = list(comments.keys())[j]
-            output = {video_id : {'toxicity' : [], 'severe_toxicity' : [], 'identity_attack' : [], 'insult' : [], 'profanity' : [], 'threat' : []}}
-            for k in range(len(comments[video_id])):
-                for api in perspectives:
-                    if k > len(comments[video_id])-1:
-                        continue
-                    request = {
-                        'comment': {'text': comments[video_id][k]['comment']},
-                        'requestedAttributes': {'TOXICITY' : {}, 'SEVERE_TOXICITY': {}, 'IDENTITY_ATTACK': {}, 'INSULT': {}, 'PROFANITY': {}, 'THREAT': {}}
-                    }
-                    try:
-                        response = api.comments().analyze(body=request).execute()
-                    except:
-                        continue
-                    if response['attributeScores']['TOXICITY']['spanScores'][0]['score']['value'] in output[video_id]['toxicity']:
-                        continue
-                    output[video_id]['toxicity'].append(response['attributeScores']['TOXICITY']['spanScores'][0]['score']['value'])
-                    output[video_id]['severe_toxicity'].append(response['attributeScores']['SEVERE_TOXICITY']['spanScores'][0]['score']['value'])
-                    output[video_id]['identity_attack'].append(response['attributeScores']['IDENTITY_ATTACK']['spanScores'][0]['score']['value'])
-                    output[video_id]['insult'].append(response['attributeScores']['INSULT']['spanScores'][0]['score']['value'])
-                    output[video_id]['profanity'].append(response['attributeScores']['PROFANITY']['spanScores'][0]['score']['value'])
-                    output[video_id]['threat'].append(response['attributeScores']['THREAT']['spanScores'][0]['score']['value'])
-                    k += 1
-                    open('data/comment_loc.txt', 'w').write(str(i))
-                time.sleep(1.05)
+            output = {video_id : {}}
+            for k in range(min(10, len(comments[video_id]))):
+                if k%4 == 0:
+                    time.sleep(1.05)
+                api = perspectives[k%4]
+                comment = comments[video_id][k]['comment']
+                request = {
+                    'comment': {'text': comment},
+                    'requestedAttributes': {'TOXICITY' : {}, 'SEVERE_TOXICITY': {}, 'IDENTITY_ATTACK': {}, 'INSULT': {}, 'PROFANITY': {}, 'THREAT': {}}
+                }
+                try:
+                    response = api.comments().analyze(body=request).execute()
+                except:
+                    continue
+                toxicity = response['attributeScores']['TOXICITY']['spanScores'][0]['score']['value']
+                severe_toxicity = response['attributeScores']['SEVERE_TOXICITY']['spanScores'][0]['score']['value']
+                identity_attack = response['attributeScores']['IDENTITY_ATTACK']['spanScores'][0]['score']['value']
+                insult = response['attributeScores']['INSULT']['spanScores'][0]['score']['value']
+                profanity = response['attributeScores']['PROFANITY']['spanScores'][0]['score']['value']
+                threat = response['attributeScores']['THREAT']['spanScores'][0]['score']['value']
+                output[video_id][comment] = {'toxicity' : toxicity, 'severe_toxicity' : severe_toxicity, \
+                                                                      'identity_attack' : identity_attack, 'insult' : insult, \
+                                                                        'profanity' : profanity, 'threat' : threat}
             f.write(json.dumps(output) + "\n")
-            i += 1
-            if output[list(output.keys())[0]]['toxicity'] != []:
+            with open('data/comment_loc.txt', 'w') as g:
+                g.write(str(j+1))
+            if len(output.keys()) > 0:
                 print("Successfully outputted sentiment information for video id " + str(video_id))
             else:
                 print("Outputted video id " + video_id + ", but there was no sentiment to analyze")
