@@ -13,7 +13,7 @@ def get_comments(ids):
     # API information
     api_service_name = "youtube"
     api_version = "v3"
-    DEVELOPER_KEY = 'AIzaSyBVZgLhciLiceJzE1mRIynS0Y_TpF-fZHo'
+    DEVELOPER_KEY = 'na'
     # API client
     youtube = googleapiclient.discovery.build(
             api_service_name, api_version, developerKey = DEVELOPER_KEY)
