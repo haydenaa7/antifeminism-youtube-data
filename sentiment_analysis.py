@@ -2,8 +2,8 @@ import json
 from googleapiclient import discovery
 import time
 
-API_KEYS = ['AIzaSyBVZgLhciLiceJzE1mRIynS0Y_TpF-fZHo', 'AIzaSyATYZXMLy5gE6-VedIAjhjKsxuhHNpHcVE', \
-            'AIzaSyBCB08Ov42yWxaY9O_wu_idSLPZIE9PB3E', 'AIzaSyCyM8jTZfF-rMEwD72KWz8IRuR7s5bLiKw']
+API_KEYS = ['na', 'na', \
+            'na', 'na']
 
 def analyze_comments(comments, perspectives):
     # Save and retrieve current comment to start at if function being run multiple times
