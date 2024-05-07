@@ -27,7 +27,7 @@ def add_comment_weighted_scores(comments, videos):
     def calculate_score(comment, views):
         likes = comment['likes']
         replies = comment['reply_count']
-        return 0 if total_views == 0 else 0.5 * (likes*views/total_views) + 0.5 * (replies*views/total_views)
+        return 0.5 * (likes*views/total_views) + 0.5 * (replies*views/total_views)
     for video in comments:
         raw = [list(x.values())[0]['views'] for x in videos if list(x.values())[0]['video_id'] == video and 'views' in list(x.values())[0]]
         if len(raw) == 0:
@@ -41,6 +41,14 @@ def add_comment_weighted_scores(comments, videos):
         video[video_name]['score'] = 0
         for comment in comments[video_id]:
             video[video_name]['score'] += comment['score']
+
+def pretty_date(date1, date2):
+    code = {'01' : 'January', '02' : 'February', '03' : 'March', '04' : 'April', '05' : 'May', '06' : 'June',\
+            '07' : 'July', '08' : 'August', '09' : 'September', '10' : 'October', '11' : 'November', '12' : 'December'}
+    date1y, date1m, date1d = date1.split('-')
+    date2y, date2m, date2d = date2.split('-')
+    return f'{date1d.lstrip("0")} {code[date1m]} {date1y} - {date2d.lstrip("0")} {code[date2m]} {date2y}'
+
 
 
 def get_video_sentiments():
@@ -85,8 +93,9 @@ def get_sample_sizes(videos, video_sentiments, comments, comment_sentiments, vis
         if save_file:
             plt.savefig("images/sample_sizes.png")
 
-def analyze_video_sentiments(videos, video_sentiments):
+def analyze_video_sentiments(videos, video_sentiments, limit=None):
     dates = []
+    overall = []
     toxicity = []
     severe_toxicity = []
     identity_attack = []
@@ -99,7 +108,10 @@ def analyze_video_sentiments(videos, video_sentiments):
         video_id = video_values['video_id']
         if video_id not in video_sentiments:
             continue
-        date = date2num(np.datetime64(video_values['date_published'][:video_values['date_published'].index('T')]))
+        raw_date = video_values['date_published'][:video_values['date_published'].index('T')]
+        if limit and (raw_date < limit[0] or raw_date > limit[1]):
+            continue
+        date = date2num(np.datetime64(raw_date))
         dates.append(date)
         sentiment_values = video_sentiments[video_id]
         toxicity.append(sentiment_values['toxicity'])
@@ -108,11 +120,16 @@ def analyze_video_sentiments(videos, video_sentiments):
         insult.append(sentiment_values['insult'])
         profanity.append(sentiment_values['profanity'])
         threat.append(sentiment_values['threat'])
+        overall.append(sentiment_values['toxicity'] * 1/6 + sentiment_values['severe_toxicity'] * 1/6 + sentiment_values['identity_attack'] * 1/6 + \
+                       sentiment_values['insult'] * 1/6 + sentiment_values['profanity'] * 1/6 + sentiment_values['threat'] * 1/6)
 
     plt.figure(figsize=(15, 7))
     plt.gca().axes.get_xaxis().set_ticks([])
     plt.gca().set_ylim([0, 0.4])
-    plt.xlabel("9 March 2020 - 9 March 2023")
+    if not limit:
+        plt.xlabel("9 March 2020 - 9 March 2023")
+    else:
+        plt.xlabel(pretty_date(limit[0], limit[1]))
     plt.ylabel("Sentiment")
 
     ys = [toxicity, severe_toxicity, identity_attack, insult, profanity, threat]
@@ -128,17 +145,21 @@ def analyze_video_sentiments(videos, video_sentiments):
         plt.plot(dates, p(dates), color=color, label=labels[i] + ' (R2 = ' + str(round(rvalue**2, 3)) + ', p = ' + str(round(pvalue, 12)) + ')', linewidth=3)
         ci = 1.95 * np.std(ys[i]) / np.sqrt(len(dates))
         plt.fill_between(dates, (p(dates) - ci), (p(dates) + ci), color=color, alpha=0.1)
-        
+    
+    z = np.polyfit(dates, overall, 1)
+    p = np.poly1d(z)
+    rvalue, pvalue = get_correlation(dates, overall)
+    plt.plot(dates, p(dates), color='darkred', label='Overall (R2 = ' + str(round(rvalue**2, 3)) + ', p = ' + str(round(pvalue, 12)) + ')', linewidth=3, linestyle='-.')
 
     date = date2num(np.datetime64('2022-03-09'))
     plt.plot([date, date], [0, 1], color='black', linestyle='--')
     plt.legend()
     plt.grid(True)
     plt.title("Trends in Average Negative Sentiments in YouTube Video Titles (n=" + str(len(toxicity)) + ")")
-    #plt.savefig('images/video_sentiments.png')
+    #plt.savefig('images/video_sentiments6monthsafter.png')
     plt.show()
 
-def analyze_comment_sentiments(videos, comment_sentiments):
+def analyze_comment_sentiments(videos, comment_sentiments, limit=None):
     size = 0
     dates = []
     toxicity = []
@@ -147,13 +168,17 @@ def analyze_comment_sentiments(videos, comment_sentiments):
     insult = []
     profanity = []
     threat = []
+    overall = []
 
     for video_id in comment_sentiments:
         sentiment_values = comment_sentiments[video_id]
         if len(sentiment_values['toxicity']) < 5:
             continue
-        raw_date = list(filter(lambda x : list(x.values())[0]['video_id'] == video_id, videos))[0]
-        date = date2num(np.datetime64(list(raw_date.values())[0]['date_published'][:list(raw_date.values())[0]['date_published'].index('T')]))
+        raw_raw_date = list(filter(lambda x : list(x.values())[0]['video_id'] == video_id, videos))[0]
+        raw_date = list(raw_raw_date.values())[0]['date_published'][:list(raw_raw_date.values())[0]['date_published'].index('T')]
+        if limit and (raw_date < limit[0] or raw_date > limit[1]):
+            continue
+        date = date2num(np.datetime64(raw_date))
         dates.append(date)
         
         t = set(sentiment_values['toxicity'])
@@ -169,12 +194,18 @@ def analyze_comment_sentiments(videos, comment_sentiments):
         th = set(sentiment_values['threat'])
         threat.append(sum(th)/len(th))
 
+        overall.append(1/6 * sum(t)/len(t) + 1/6 * sum(st)/len(st) + 1/6 * sum(ia)/len(ia) + \
+                       1/6 * sum(i)/len(i) + 1/6 * sum(p)/len(p) + 1/6 * sum(th)/len(th))
+
         size += len(t)
 
     plt.figure(figsize=(15, 7))
     plt.gca().axes.get_xaxis().set_ticks([])
     plt.gca().set_ylim([0, 0.4])
-    plt.xlabel("9 March 2020 - 9 March 2023")
+    if not limit:
+        plt.xlabel("9 March 2020 - 9 March 2023")
+    else:
+        plt.xlabel(pretty_date(limit[0], limit[1]))
 
 
     ys = [toxicity, severe_toxicity, identity_attack, insult, profanity, threat]
@@ -183,17 +214,24 @@ def analyze_comment_sentiments(videos, comment_sentiments):
     for i in range(len(ys)):
         color = palette[i]
         plt.scatter(dates, ys[i], color=color, edgecolors=None, s=8, alpha=0.3)
-        z = np.polyfit(dates, ys[i], 3)
+        z = np.polyfit(dates, ys[i], 1)
         p = np.poly1d(z)
         rvalue, pvalue = get_correlation(dates, ys[i])
-        plt.plot(dates, p(dates), color=color, label=labels[i] + ' (R2 = ' + str(round(rvalue**2, 3)) + ', p = ' + str(round(pvalue, 12)) + ')', linewidth=2)
+        plt.plot(dates, p(dates), color=color, label=labels[i] + ' (R2 = ' + str(round(rvalue**2, 3)) + ', p = ' + str(round(pvalue, 12)) + ')', linewidth=3)
         ci = 1.95 * np.std(ys[i]) / np.sqrt(len(dates))
         plt.fill_between(dates, (p(dates) - ci), (p(dates) + ci), color=color, alpha=0.1)
+    z = np.polyfit(dates, overall, 1)
+    p = np.poly1d(z)
+    rvalue, pvalue = get_correlation(dates, overall)
+    plt.plot(dates, p(dates), color='darkred', label='Overall (R2 = ' + str(round(rvalue**2, 3)) + ', p = ' + str(round(pvalue, 12)) + ')', linewidth=3, linestyle='-.')
+    
+
     date = date2num(np.datetime64('2022-03-09'))
     plt.plot([date, date], [0, 1], color='black', linestyle='--', linewidth=2)
     plt.legend()
     plt.grid(True)
     plt.title("Trends in Average Negative Sentiments in YouTube Video Comments (n=" + str(size) + ")")
+    #plt.savefig('images/comment_sentiments6monthsafter.png')
     plt.show()
 
 def analyze_video_views(videos, limit=None):
@@ -205,7 +243,7 @@ def analyze_video_views(videos, limit=None):
         if 'views' not in video_values:
             continue
         raw_date = video_values['date_published'][:video_values['date_published'].index('T')]
-        if limit and raw_date < limit[0] or raw_date > limit[1]:
+        if limit and (raw_date < limit[0] or raw_date > limit[1]):
             continue
         date = date2num(np.datetime64(raw_date))
         dates.append(date)
@@ -219,7 +257,7 @@ def analyze_video_views(videos, limit=None):
     if not limit:
         plt.xlabel("9 March 2020 - 9 March 2023")
     else:
-        plt.xlabel(limit[0] + " - " + limit[1])
+        plt.xlabel(pretty_date(limit[0], limit[1]))
     plt.ylabel("Views")
     plt.bar(dates, views)
 
@@ -236,7 +274,7 @@ def analyze_video_views(videos, limit=None):
     plt.title("Log-scale Trends in Average YouTube Video View Count (n=" + str(len(views)) + ")")
     plt.legend()
     plt.grid(True)
-    #plt.savefig('images/views.png')
+    #plt.savefig('images/views6months.png')
     plt.show()
 
 def analyze_video_comments(videos, limit=None):
@@ -248,22 +286,22 @@ def analyze_video_comments(videos, limit=None):
         if 'comments' not in video_values:
             continue
         raw_date = video_values['date_published'][:video_values['date_published'].index('T')]
-        if limit and raw_date < limit[0] or raw_date > limit[1]:
+        if limit and (raw_date < limit[0] or raw_date > limit[1]):
             continue
         date = date2num(np.datetime64(raw_date))
         dates.append(date)
-        comment_count = int(video_values['comments'])
+        comment_count = int(video_values['comments'])/int(video_values['views'])
         comments.append(comment_count)
 
     plt.figure(figsize=(15, 7))
     plt.gca().axes.get_xaxis().set_ticks([])
-    plt.gca().axes.set_yscale('log')
-    plt.gca().set_ylim([0, 1e5])
+    #plt.gca().axes.set_yscale('log')
+    plt.gca().set_ylim([0, 0.1])
     if not limit:
         plt.xlabel("9 March 2020 - 9 March 2023")
     else:
-        plt.xlabel(limit[0] + " - " + limit[1])
-    plt.ylabel("Comments")
+        plt.xlabel(pretty_date(limit[0], limit[1]))
+    plt.ylabel("Comment/View Ratio")
     plt.bar(dates, comments)
 
     # Polynomial regression
@@ -275,11 +313,11 @@ def analyze_video_comments(videos, limit=None):
     plt.fill_between(dates, (p(dates) - ci), (p(dates) + ci), color='orange', alpha=0.1)
 
     date = date2num(np.datetime64('2022-03-09'))
-    plt.plot([date, date], [0, 1e5], color='black', linewidth=2, linestyle='--')
-    plt.title("Log-scale Trends in Average YouTube Video Comment Count (n=" + str(len(comments)) + ")")
+    plt.plot([date, date], [0, 0.1], color='black', linewidth=2, linestyle='--')
+    plt.title("Trends in Average YouTube Video Comment/View Ratio (n=" + str(len(comments)) + ")")
     plt.legend()
     plt.grid(True)
-    #plt.savefig('images/comments.png')
+    #plt.savefig('images/comments6months.png')
     plt.show()
 
 def analyze_video_likes(videos, limit=None):
@@ -291,23 +329,23 @@ def analyze_video_likes(videos, limit=None):
         if 'likes' not in video_values:
             continue
         raw_date = video_values['date_published'][:video_values['date_published'].index('T')]
-        if limit and raw_date < limit[0] or raw_date > limit[1]:
+        if limit and (raw_date < limit[0] or raw_date > limit[1]):
             continue
         date = date2num(np.datetime64(raw_date))
         dates.append(date)
-        comment_count = int(video_values['likes'])
-        likes.append(comment_count)
+        like_count = int(video_values['likes'])/int(video_values['views'])
+        likes.append(like_count)
 
 
     plt.figure(figsize=(15, 7))
     plt.gca().axes.get_xaxis().set_ticks([])
-    plt.gca().axes.set_yscale('log')
-    plt.gca().set_ylim([0, 1e5])
+    #plt.gca().axes.set_yscale('log')
+    plt.gca().set_ylim([0, 0.2])
     if not limit:
         plt.xlabel("9 March 2020 - 9 March 2023")
     else:
-        plt.xlabel(limit[0] + " - " + limit[1])
-    plt.ylabel("Likes")
+        plt.xlabel(pretty_date(limit[0], limit[1]))
+    plt.ylabel("Like/View Ratio")
     plt.bar(dates, likes)
 
     # Polynomial regression
@@ -319,11 +357,53 @@ def analyze_video_likes(videos, limit=None):
     plt.fill_between(dates, (p(dates) - ci), (p(dates) + ci), color='orange', alpha=0.1)
 
     date = date2num(np.datetime64('2022-03-09'))
-    plt.plot([date, date], [0, 1e5], color='black', linewidth=2, linestyle='--')
-    plt.title("Log-scale Trends in Average YouTube Video Like Count (n=" + str(len(likes)) + ")")
+    plt.plot([date, date], [0, 0.4], color='black', linewidth=2, linestyle='--')
+    plt.title("Trends in Average YouTube Video Like/View Ratio (n=" + str(len(likes)) + ")")
     plt.legend()
     plt.grid(True)
     #plt.savefig('images/likes.png')
+    plt.show()
+
+def analyze_video_scores(videos, limit=None):
+    dates = []
+    scores = []
+
+    for video in videos:
+        video_values = video[list(video.keys())[0]]
+        if 'score' not in video_values:
+            continue
+        raw_date = video_values['date_published'][:video_values['date_published'].index('T')]
+        if limit and (raw_date < limit[0] or raw_date > limit[1]):
+            continue
+        date = date2num(np.datetime64(raw_date))
+        dates.append(date)
+        score = int(video_values['score'])
+        scores.append(score)
+
+    plt.figure(figsize=(15, 7))
+    plt.gca().axes.get_xaxis().set_ticks([])
+    plt.gca().set_ylim([0, 60])
+    if not limit:
+        plt.xlabel("9 March 2020 - 9 March 2023")
+    else:
+        plt.xlabel(pretty_date(limit[0], limit[1]))
+    plt.ylabel("Score")
+    plt.bar(dates, scores)
+
+    # Polynomial regression
+    z = np.polyfit(dates, scores, 3)
+    p = np.poly1d(z)
+    rvalue, pvalue = get_correlation(dates, scores)
+    plt.plot(dates, p(dates), linewidth=2, color='orange', label='R2 = ' + str(round(rvalue**2, 3)) + ', p = ' + str(round(pvalue, 12)))
+    ci = 1.95 * np.std(scores) / np.sqrt(len(dates))
+    plt.fill_between(dates, (p(dates) - ci), (p(dates) + ci), color='orange', alpha=0.1)
+
+    date = date2num(np.datetime64('2022-03-09'))
+    plt.plot([date, date], [0, 1e5], color='black', linewidth=2, linestyle='--')
+    plt.title("Trends in Average YouTube Video Importance Score (n=" + str(len(scores)) + ")")
+    plt.legend()
+    plt.grid(True)
+    #plt.savefig('images/scores6months.png')
     plt.show()
 
 def analyze_video_scores_sentiment(videos, video_sentiments):
@@ -382,12 +462,16 @@ def main():
     video_sentiments = get_video_sentiments()
     comments = get_comments()
     comment_sentiments = get_comment_sentiments()
+
     #get_sample_sizes(videos, video_sentiments, comments, comment_sentiments, visualize=True, save_file=False)
-    #analyze_video_sentiments(videos, video_sentiments)
-    #analyze_comment_sentiments(videos, comment_sentiments)
+
+    #analyze_video_sentiments(videos, video_sentiments, limit=('2021-09-09', '2023-03-09'))
+    analyze_comment_sentiments(videos, comment_sentiments, limit=('2021-09-09', '2023-03-09'))
     #analyze_video_views(videos, limit=('2021-09-09', '2022-03-09'))
     #analyze_video_comments(videos, limit=('2021-09-09', '2022-03-09'))
-    #analyze_video_likes(videos, limit=('2021-09-09', '2022-03-09'))
+    #analyze_video_likes(videos)
+
     #add_comment_weighted_scores(comments, videos)
+    #analyze_video_scores(videos, limit=('2022-09-09', '2023-03-09'))
     #analyze_video_scores_sentiment(videos, video_sentiments)
 main()
